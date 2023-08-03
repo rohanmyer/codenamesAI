@@ -9,7 +9,7 @@ from sklearn.cluster import KMeans
 # import nltk
 from nltk.corpus import wordnet as wn
 
-# from nltk.corpus import brown
+from nltk.corpus import brown
 
 word2vec_sample = str(find("models/word2vec_sample/pruned.word2vec.txt"))
 # # model = gensim.models.KeyedVectors.load_word2vec_format(word2vec_sample, binary=False)
@@ -46,19 +46,22 @@ class CodenamesPlayer:
         self.clues_given = []
         self.model = gensim.downloader.load("glove-twitter-50")
         self.corpus = self.build_corpus()
+        self.corpus_sims = None
 
     def build_corpus(self):
-        word2vec_sample = str(find("models/word2vec_sample/pruned.word2vec.txt"))
+        # word2vec_sample = str(find("models/word2vec_sample/pruned.word2vec.txt"))
+        word2vec_sample = brown.words()
         wordnet = set(wn.words())
         # return wordnet
-        word_corpus = []
-        with open(word2vec_sample, "r") as fd:
-            reader = csv.reader(fd)
-            for row in reader:
-                row = row[0].split()[0].lower()
-                if row in wordnet:
-                    word_corpus.append(row)
-        return word_corpus[1:]
+        word_corpus = [w.lower() for w in word2vec_sample if w.lower() in wordnet]
+        # word_corpus = []
+        # with open(word2vec_sample, "r") as fd:
+        #     reader = csv.reader(fd)
+        #     for row in reader:
+        #         row = row[0].split()[0].lower()
+        #         if row in wordnet:
+        #             word_corpus.append(row)
+        return word_corpus
 
     def guess(self, state) -> list:
         words = state.words
@@ -75,17 +78,10 @@ class CodenamesPlayer:
         words_scores.sort(key=lambda x: x[1], reverse=True)
         return [words_scores[i][0] for i in range(state.count)]
 
-    def clue(self, state) -> tuple:
-        words = state.words
-        guessed = state.guessed
-        actuals = state.actual
-
-        clue = ""
-        sim = -1
-        count = 0
-
+    def build_corpus_sims(self, words):
+        corpus_sims = {}
         for i, w in enumerate(self.corpus):
-            if "_" in w or " " in w:
+            if "_" in w or " " in w or "-" in w:
                 continue
             if not w.isalpha():
                 continue
@@ -104,6 +100,21 @@ class CodenamesPlayer:
                 except:
                     pass
             close.sort(key=lambda x: x[1], reverse=True)
+            corpus_sims[w] = close
+        self.corpus_sims = corpus_sims
+
+    def clue(self, state) -> tuple:
+        if self.corpus_sims is None:
+            self.build_corpus_sims(state.words)
+
+        guessed = state.guessed
+        actuals = state.actual
+
+        clue = ""
+        score = -1
+        count = 0
+
+        for w, close in self.corpus_sims.items():
             n = 0
             assasin_idx = 1
             for i, c in enumerate(close):
@@ -118,10 +129,11 @@ class CodenamesPlayer:
                 else:
                     break
             avg_sim = np.mean([x[1] for x in close[: n + 1]])
-            n *= avg_sim * np.sqrt(assasin_idx)
-            if n > sim and w not in self.clues_given:
-                sim = n
-                count = n / (avg_sim * np.sqrt(assasin_idx))
+            new_score = n * avg_sim * np.sqrt(assasin_idx)
+            if new_score > score and w not in self.clues_given:
+                score = new_score
+                count = n
                 clue = w
+        print(self.corpus_sims[clue][:5])
         self.clues_given.append(clue)
         return clue, min(count, 3)

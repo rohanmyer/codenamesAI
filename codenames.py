@@ -43,7 +43,7 @@ if __name__ == "__main__":
         # num_games=10,
         # self_training=True,
         # maximum_messages=500000,
-        # create_lobby=True,
+        create_lobby=True,
         # used to set up 2-player game (rather than default 4)
-        # game_parameters={"num_players": 2},
+        game_parameters={"num_players": 2},
     )
