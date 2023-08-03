@@ -1,6 +1,6 @@
 from playgroundrl.client import *
 from playgroundrl.actions import *
-import word2vec
+from word2vec import CodenamesPlayer
 
 BOARD_SIZE = 25
 
@@ -16,17 +16,18 @@ class TestCodenames(PlaygroundClient):
             },
             render_gameplay=True,
         )
+        self.Player = CodenamesPlayer()
 
     def callback(self, state: CodenamesState, reward):
         if state.player_moving_id not in self.player_ids:
             return None
 
         if state.role == "GIVER":
-            word, count = word2vec.clue(state)
+            word, count = self.Player.clue(state)
             return CodenamesSpymasterAction(word=word, count=count)
         elif state.role == "GUESSER":
             return CodenamesGuesserAction(
-                guesses=word2vec.guess(state),
+                guesses=self.Player.guess(state),
             )
 
     def gameover_callback(self):
@@ -39,7 +40,7 @@ if __name__ == "__main__":
     t.run(
         # pool=Pool.OPEN,
         # num_games=10,
-        self_training=True,
+        # self_training=True,
         # maximum_messages=500000,
         # used to set up 2-player game (rather than default 4)
         # game_parameters={"num_players": 2},
