@@ -38,10 +38,12 @@ if __name__ == "__main__":
     # args = parse_arguments("codenames")
     t = TestCodenames()
     t.run(
-        # pool=Pool.OPEN,
+        pool=Pool(1),
+        # lobby_code=
         # num_games=10,
         # self_training=True,
         # maximum_messages=500000,
+        # create_lobby=True,
         # used to set up 2-player game (rather than default 4)
         # game_parameters={"num_players": 2},
     )

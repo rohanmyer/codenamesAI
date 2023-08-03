@@ -44,14 +44,13 @@ word2vec_sample = str(find("models/word2vec_sample/pruned.word2vec.txt"))
 class CodenamesPlayer:
     def __init__(self):
         self.clues_given = []
-        self.model = gensim.models.KeyedVectors.load_word2vec_format(
-            word2vec_sample, binary=False
-        )
+        self.model = gensim.downloader.load("glove-twitter-50")
         self.corpus = self.build_corpus()
 
     def build_corpus(self):
         word2vec_sample = str(find("models/word2vec_sample/pruned.word2vec.txt"))
         wordnet = set(wn.words())
+        # return wordnet
         word_corpus = []
         with open(word2vec_sample, "r") as fd:
             reader = csv.reader(fd)
@@ -81,13 +80,6 @@ class CodenamesPlayer:
         guessed = state.guessed
         actuals = state.actual
 
-        for i, status in enumerate(guessed):
-            if actuals[i] != state.color:
-                continue
-            if status == "UNKNOWN":
-                word = words[i]
-                break
-
         clue = ""
         sim = -1
         count = 0
@@ -95,14 +87,14 @@ class CodenamesPlayer:
         for i, w in enumerate(self.corpus):
             if "_" in w or " " in w:
                 continue
-            if w in word or word in w:
-                continue
             if not w.isalpha():
                 continue
             if w in words:
                 continue
             close = []
             for j, word in enumerate(words):
+                if w in word or word in w:
+                    self.clues_given.append(w)
                 if word == "new york":
                     word = word.replace(" ", "-")
                 else:
@@ -113,14 +105,23 @@ class CodenamesPlayer:
                     pass
             close.sort(key=lambda x: x[1], reverse=True)
             n = 0
-            for c in close:
-                if actuals[c[0]] == state.color and guessed[c[0]] == "UNKNOWN":
+            assasin_idx = 1
+            for i, c in enumerate(close):
+                if (
+                    actuals[c[0]] == state.color
+                    and guessed[c[0]] == "UNKNOWN"
+                    # and c[1] > 0.5
+                ):
                     n += 1
+                elif actuals[c[0]] == "ASSASIN":
+                    assasin_idx = i
                 else:
                     break
-            if n > count and w not in self.clues_given:
-                count = n
+            avg_sim = np.mean([x[1] for x in close[: n + 1]])
+            n *= avg_sim * np.sqrt(assasin_idx)
+            if n > sim and w not in self.clues_given:
+                sim = n
+                count = n / (avg_sim * np.sqrt(assasin_idx))
                 clue = w
-                sim = close[0][1]
         self.clues_given.append(clue)
         return clue, min(count, 3)
